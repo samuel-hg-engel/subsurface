@@ -2,5 +2,7 @@
 **/.DS_Store
 **/.ipynb_checkpoints/
 
+src/__pycache__
+
 # ignore the output directories created by tests
 **/results
