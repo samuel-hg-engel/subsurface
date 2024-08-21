@@ -1,0 +1,22 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "microsubsurface"
+version = "0.0.1"
+authors = [
+  { name="Samuel Engel", email="samuel.engel@manchester.ac.uk" },
+]
+description = "Tools to generate microstructures for CPFEM using Markov Chains"
+readme = "README.md"
+requires-python = ">=3.8"
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "Operating System :: OS Independent",
+]
+
+[project.urls]
+Homepage = "https://github.com/samuel-hg-engel/subsurface"
+Issues = "https://github.com/samuel-hg-engel/subsurface/issues"
+
