@@ -15,7 +15,7 @@ class Voronoi:
         self._voronoi_matrix = None
         self._surface = None
         self._grain_centre = None
-
+        self._seed_weights = None
 
     # Allocatable Variables
     # Seed Locations
@@ -28,13 +28,32 @@ class Voronoi:
         self._seed_locations = value
         self.seeds = len(value)
 
+    @property
+    def seed_weights(self):
+        return self._seed_weights
+
+    @seed_weights.setter
+    def seed_weights(self,value):
+        self._seed_weights = value
+
     # Dependent variables
     # Voronoi Matrix - create the matrix and scalp the surface
-    @property
-    def generate_voronoi_matrix(self):
-        self._voronoi_matrix = generate_voronoi(self._seed_locations,self.voxels,self._coordinates)
+    def generate_voronoi_matrix(self,weighted=False,N_neighbours=10):
+
+        if weighted==False:
+            self._voronoi_matrix = generate_voronoi(self._seed_locations,self._coordinates)
+
+        elif weighted==True:
+            self._voronoi_matrix = generate_weighted_voronoi(self._seed_locations,self._coordinates,self._seed_weights,N_neighbours)
+
         return self
-    
+
+    def generate_seed_weights(self,min_weight=0,max_weight=1):
+
+        self._seed_weights = np.random.uniform(min_weight,max_weight,size=(self.seeds))
+        #self._seed_weights = max_weight*np.random.random(size=(self.seeds))
+        
+        return self
     
     @property
     def voronoi_matrix(self):
@@ -71,4 +90,8 @@ class Voronoi:
     def perturb_seed_locations(self,perturbation): 
         self._seed_locations = perturb_seeds(self._seed_locations,perturbation)
         return self._seed_locations
+
+    def perturb_seed_weights(self,perturbation): 
+        self._seed_weights = perturb_weights(self._seed_weights,perturbation)
+        return self._seed_weights
 

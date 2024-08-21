@@ -2,7 +2,7 @@ from src.imports import *
 from src.tools import *
 from src.voronoi import *
 
-def voronoi_markov_chain(N_iter,accuracy_threshold,perturbation,voronoi_reference,output_frequency=1):
+def voronoi_markov_chain(N_iter,accuracy_threshold,perturbation,voronoi_reference,output_frequency=1,weighted=False):
 
     voronoi_chain = copy.copy(voronoi_reference)
 
@@ -12,12 +12,13 @@ def voronoi_markov_chain(N_iter,accuracy_threshold,perturbation,voronoi_referenc
     
         print('Searching...{N}/{N_max}'.format(N=N,N_max=N_iter) + 'Found...{G}'.format(G=len(successful_voronoi)).rjust(20) ,end='\r')
         #print('Found...{G}'.format(G=len(successful_voronoi)).rjust(15) ,end='\r')
-
         
         voronoi_perturbed = copy.copy(voronoi_chain)
         
         voronoi_perturbed.perturb_seed_locations(perturbation)
-        voronoi_perturbed.generate_voronoi_matrix
+        voronoi_perturbed.perturb_seed_weights(perturbation/100)
+
+        voronoi_perturbed.generate_voronoi_matrix(weighted=weighted)
     
         accuracy = calculate_accuracy(voronoi_reference.voronoi_matrix,voronoi_perturbed.voronoi_matrix,layer=-1)
     
