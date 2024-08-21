@@ -1,4 +1,4 @@
-from src.imports import *
+from subsurface.imports import *
 
 def generate_coordinates(N_voxels):
 

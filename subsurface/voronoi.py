@@ -1,5 +1,5 @@
-from src.imports import *
-from src.tools import *
+from subsurface.imports import *
+from subsurface.tools import *
 
 class Voronoi:
     def __init__(self,voxels,seeds):

@@ -1,6 +1,6 @@
-from src.imports import *
-from src.tools import *
-from src.voronoi import *
+from subsurface.imports import *
+from subsurface.tools import *
+from subsurface.voronoi import *
 
 def voronoi_markov_chain(N_iter,accuracy_threshold,perturbation,voronoi_reference,output_frequency=1,weighted=False):
 
