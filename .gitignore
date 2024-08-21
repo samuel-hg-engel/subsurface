@@ -1,8 +1,5 @@
 # ignore system information files
 **/.DS_Store
 **/.ipynb_checkpoints/
-
-subsurface/__pycache__
-
-# ignore the output directories created by tests
+**/__pycache__
 **/results

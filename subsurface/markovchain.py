@@ -16,7 +16,6 @@ def voronoi_markov_chain(N_iter,accuracy_threshold,perturbation,voronoi_referenc
         voronoi_perturbed = copy.copy(voronoi_chain)
         
         voronoi_perturbed.perturb_seed_locations(perturbation)
-        voronoi_perturbed.perturb_seed_weights(perturbation/100)
 
         voronoi_perturbed.generate_voronoi_matrix(weighted=weighted)
     
