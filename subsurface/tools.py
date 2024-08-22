@@ -63,7 +63,6 @@ def generate_weighted_voronoi(seeds,coordinates,weights,N_neighbours=10,weight_t
         weight_matrix = np.vectorize(color_weights.get)(colors) # Need to speed up this computation
 
         #weight_matrix = np.vectorize(lambda k: color_weights[k])(colors)
-
         
         # Find the weighted distance to the nearest seed - Essentially free time
         if weight_type == 'multiplicative':
@@ -98,7 +97,7 @@ def get_voronoi_surface(voronoi_matrix):
         return voronoi_matrix
 
     elif len(shape) == 3:
-        return voronoi_matrix[:,:,-1]
+        return voronoi_matrix[:,:,0]
 
 def get_grain_centre(voronoi_matrix,seed_ID):
 

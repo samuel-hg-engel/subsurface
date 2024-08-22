@@ -5,6 +5,7 @@ import copy
 import matplotlib.pyplot as plt
 import vtk
 import vtk.util.numpy_support as numpy_support
+import copy
 
 import scienceplots
 
