@@ -3,8 +3,8 @@ import scipy
 import numpy as np
 import copy
 import matplotlib.pyplot as plt
-import vtk
-import vtk.util.numpy_support as numpy_support
+import copy
+import damask
 
 import scienceplots
 
