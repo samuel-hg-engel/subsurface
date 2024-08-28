@@ -1,28 +1,38 @@
 from subsurface.imports import *
 
-def generate_coordinates(N_voxels):
+def generate_coordinates(N_voxels,size,origin=np.array([0,0,0])):
 
-    #return [list(index) for index in np.ndindex(*N_voxels)]
-
+    
     if len(N_voxels)==3:
     
-        coordinates = np.stack(np.meshgrid(np.linspace(0,N_voxels[0]-1,N_voxels[0]),
-                                           np.linspace(0,N_voxels[1]-1,N_voxels[1]),
-                                           np.linspace(0,N_voxels[2]-1,N_voxels[2]),
+        start = origin                  + size/N_voxels*0.5 # Add voxel centre offset
+        end = origin + np.array(size)   - size/N_voxels*0.5 # Add voxel offset
+    
+        coordinates = np.stack(np.meshgrid(np.linspace(start[0],end[0],N_voxels[0]),
+                                           np.linspace(start[1],end[1],N_voxels[1]),
+                                           np.linspace(start[2],end[2],N_voxels[2]),
                                            indexing='ij'),
                                            axis=-1)
 
     elif len(N_voxels)==2:
-    
-        coordinates = np.stack(np.meshgrid(np.linspace(0,N_voxels[0]-1,N_voxels[0]),
-                                           np.linspace(0,N_voxels[1]-1,N_voxels[1]),
+
+        origin = np.array([0,0])
+                                           
+        start = origin                  + size/N_voxels*0.5 # Add voxel centre offset
+        end = origin + np.array(size)   - size/N_voxels*0.5 # Add voxel offset
+
+        coordinates = np.stack(np.meshgrid(np.linspace(start[0],end[0],N_voxels[0]),
+                                           np.linspace(start[1],end[1],N_voxels[1]),
                                            indexing='ij'),
                                            axis=-1)
 
     return coordinates
 
-def generate_seeds(N_seeds,N_voxels):
-    return N_voxels*np.random.random_sample(size=(N_seeds,len(N_voxels)))
+def generate_seeds(seeds,size):
+
+    raw_seeds = np.random.random_sample(size=(seeds,len(size)))
+
+    return np.array(raw_seeds*size)
 
 def generate_voronoi(seeds,coordinates):
     
@@ -30,9 +40,9 @@ def generate_voronoi(seeds,coordinates):
     seed_tree = scipy.spatial.KDTree(seeds)
 
     #voronoi = seed_tree.query(coordinates, workers = int(os.environ.get('OMP_NUM_THREADS',4)))[1]
-    voronoi = seed_tree.query(coordinates, workers = 8 )[1]
+    voronoi = seed_tree.query(coordinates.reshape(-1,coordinates.shape[-1]), workers = 8 )[1]
 
-    return voronoi    
+    return voronoi.reshape(coordinates.shape[:-1])
 
 
 def generate_weighted_voronoi(seeds,coordinates,weights,N_neighbours=10,weight_type='additive'):
@@ -46,7 +56,7 @@ def generate_weighted_voronoi(seeds,coordinates,weights,N_neighbours=10,weight_t
         seed_tree = scipy.spatial.KDTree(seeds)
     
         # Find the distance and colors
-        distance,colors = seed_tree.query(coordinates, k=N_neighbours, workers = 8 )
+        distance,colors = seed_tree.query(coordinates.reshape(-1,coordinates.shape[-1]), k=N_neighbours, workers = 8 )
         
         distance = distance.reshape(np.prod(distance.shape[0:-1]),distance.shape[-1])
         colors = colors.reshape(np.prod(colors.shape[0:-1]),colors.shape[-1])
@@ -83,7 +93,7 @@ def perturb_seeds(seeds,scale):
 def perturb_weights(weights,scale):
     return  np.array([np.abs(np.random.normal(loc=weight,scale=scale)) for weight in weights])
 
-def calculate_accuracy(voronoi_reference,voronoi_perturbed,layer=-1):
+def calculate_accuracy(voronoi_reference,voronoi_perturbed,layer=0):
 
     accuracy = (voronoi_reference[:,:,layer]==voronoi_perturbed[:,:,layer])*1
     
@@ -99,27 +109,10 @@ def get_voronoi_surface(voronoi_matrix):
     elif len(shape) == 3:
         return voronoi_matrix[:,:,0]
 
-def get_grain_centre(voronoi_matrix,seed_ID):
+def get_grain_centre(voronoi_matrix,seed_ID,size,voxels):
 
     grain_centre = np.array([np.mean(np.where(voronoi_matrix==ID),axis=1) for ID in seed_ID])
 
-    return grain_centre
-
-def numpyToVTK(data, output_file):
-    data_type = vtk.VTK_INT
-    shape = data.shape
-
-    flat_data_array = data.flatten()
-    vtk_data = numpy_support.numpy_to_vtk(num_array=flat_data_array, deep=True, array_type=data_type)
-
-    img = vtk.vtkImageData()
-    img.GetPointData().SetScalars(vtk_data)
-    img.SetDimensions(shape[0], shape[1], shape[2])
-
-    # Save the VTK file
-    writer = vtk.vtkXMLImageDataWriter()
-    writer.SetFileName(output_file)
-    writer.SetInputData(img)
-    writer.Write()
+    return grain_centre*(size/voxels)
 
 

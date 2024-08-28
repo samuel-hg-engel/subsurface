@@ -2,20 +2,22 @@ from subsurface.imports import *
 from subsurface.tools import *
 
 class Voronoi:
-    def __init__(self,voxels,seeds):
+    def __init__(self,voxels,seeds,size):
 
         # Inherent properties
         self.voxels = voxels
         self.seeds = seeds
+        self.size  = size
 
         # Derived properties
-        self._seed_locations = generate_seeds(self.seeds,self.voxels)
-        self._coordinates = generate_coordinates(self.voxels)
+        self._seed_locations = generate_seeds(self.seeds,self.size)
+        self._coordinates = generate_coordinates(self.voxels,self.size)
         self._seed_IDs = None
         self._voronoi_matrix = None
         self._surface = None
         self._grain_centre = None
         self._seed_weights = None
+
 
     # Allocatable Variables
     # Seed Locations
@@ -75,13 +77,19 @@ class Voronoi:
     @property
     def grain_centre(self):
         self._seed_IDs = np.unique(self._voronoi_matrix)
-        self._grain_centre = get_grain_centre(self._voronoi_matrix,self._seed_IDs)
+        self._grain_centre = get_grain_centre(self._voronoi_matrix,self._seed_IDs,self.size,self.voxels)
         return self._grain_centre
 
     # Generic Methods
     def save(self,filename):
-        numpyToVTK(self._voronoi_matrix,filename)
-
+    
+        # Use damask to save the voronoi matrix
+        grid = damask.GeomGrid.from_Voronoi_tessellation(size=[1,1,1],seeds=[[1,1,1]],cells=[1,1,1],periodic=False)
+        
+        grid.size = self.size
+        grid.material = self._voronoi_matrix
+        grid.save(fname=filename)
+        
     def resample_seeds(self):
         self._seed_locations = generate_seeds(self.seeds,self.voxels)
         self._seed_IDs = np.unique(self._voronoi_matrix)

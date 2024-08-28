@@ -19,7 +19,7 @@ def voronoi_markov_chain(N_iter,accuracy_threshold,perturbation,voronoi_referenc
 
         voronoi_perturbed.generate_voronoi_matrix(weighted=weighted)
     
-        accuracy = calculate_accuracy(voronoi_reference.voronoi_matrix,voronoi_perturbed.voronoi_matrix,layer=-1)
+        accuracy = calculate_accuracy(voronoi_reference.voronoi_matrix,voronoi_perturbed.voronoi_matrix,layer=0)
     
         # If we reconstruct the surface within some error, save the seeds and make them the new chain seed
         if accuracy > accuracy_threshold:
