@@ -1,8 +1,7 @@
 from subsurface.imports import *
 
-def generate_coordinates(N_voxels,size,origin=np.array([0,0,0])):
+def generate_coordinates(N_voxels,size,origin= np.zeros(3)):
 
-    
     if len(N_voxels)==3:
     
         start = origin                  + size/N_voxels*0.5 # Add voxel centre offset
@@ -34,30 +33,34 @@ def generate_seeds(seeds,size):
 
     return np.array(raw_seeds*size)
 
-def generate_voronoi(seeds,coordinates):
+def generate_voronoi(seeds,coordinates,size,periodic=False):
     
     # Create the seed tree
-    seed_tree = scipy.spatial.KDTree(seeds)
+    if periodic == True:
+        seed_tree = scipy.spatial.KDTree(seeds,boxsize=size)
+    else:
+        seed_tree = scipy.spatial.KDTree(seeds)
 
-    #voronoi = seed_tree.query(coordinates, workers = int(os.environ.get('OMP_NUM_THREADS',4)))[1]
     voronoi = seed_tree.query(coordinates.reshape(-1,coordinates.shape[-1]), workers = 8 )[1]
 
     return voronoi.reshape(coordinates.shape[:-1])
 
 
-def generate_weighted_voronoi(seeds,coordinates,weights,N_neighbours=10,weight_type='additive'):
+def generate_weighted_voronoi(seeds,coordinates,size,weights,N_neighbours=10,weight_type='additive',periodic=False):
 
     # Quick catch for unweighted voronoi
     if np.sum(weights)==0.0:
-        return generate_voronoi(seeds,coordinates)
+        return generate_voronoi(seeds,coordinates,size,periodic)
 
     else:
-        # Create the KDTree
-        seed_tree = scipy.spatial.KDTree(seeds)
+        # Create the seed tree
+        if periodic == True:
+            seed_tree = scipy.spatial.KDTree(seeds,boxsize=size)
+        else:
+            seed_tree = scipy.spatial.KDTree(seeds)
     
-        # Find the distance and colors
-        distance,colors = seed_tree.query(coordinates.reshape(-1,coordinates.shape[-1]), k=N_neighbours, workers = 8 )
-        
+        distance,colors = seed_tree.query(coordinates.reshape(-1,coordinates.shape[-1]), k=N_neighbours, workers=8)
+
         distance = distance.reshape(np.prod(distance.shape[0:-1]),distance.shape[-1])
         colors = colors.reshape(np.prod(colors.shape[0:-1]),colors.shape[-1])
     
@@ -87,8 +90,15 @@ def generate_weighted_voronoi(seeds,coordinates,weights,N_neighbours=10,weight_t
         return weighted_colors.reshape(coordinates.shape[:-1])
 
 
-def perturb_seeds(seeds,scale):
-    return  np.array([np.random.normal(loc=seed,scale=scale) for seed in seeds])
+def perturb_seeds(seeds,scale,boxsize,periodic=False):
+
+    new_seeds = np.array([np.random.normal(loc=seed,scale=scale) for seed in seeds])
+
+    if periodic==False:
+        return  new_seeds
+
+    if periodic==True:
+        return np.mod(new_seeds,boxsize)
 
 def perturb_weights(weights,scale):
     return  np.array([np.abs(np.random.normal(loc=weight,scale=scale)) for weight in weights])
@@ -113,6 +123,99 @@ def get_grain_centre(voronoi_matrix,seed_ID,size,voxels):
 
     grain_centre = np.array([np.mean(np.where(voronoi_matrix==ID),axis=1) for ID in seed_ID])
 
-    return grain_centre*(size/voxels)
+    return grain_centre*np.divide(size,voxels)
 
 
+def calculate_displacement(objects,periodic=False):
+
+    displacement = []
+
+    for voronoi in objects:
+
+        vector_displacement =  (voronoi.seed_locations - objects[0].seed_locations)
+
+        if periodic==True:
+            
+            vector_displacement = np.mod(vector_displacement,voronoi.size/2)
+        
+        scalar_displacement = np.linalg.norm(vector_displacement,axis=1)
+        
+        displacement.append(scalar_displacement)
+
+    displacement = np.array(displacement)
+
+    return displacement
+
+    
+def add_buffer(matrix,N_layers=8):
+
+    x,y,z = matrix.shape
+
+    new_matrix = np.zeros_like(matrix)
+
+    buffer_id = np.max(np.unique(matrix)) + int(1)
+
+    for z_i in range(z):
+
+        layer = matrix[:,:,z_i]
+
+        new_layer = buffer_id*np.ones_like(layer)
+
+        if z_i > (z - N_layers):
+
+            new_matrix[:,:,z_i] = new_layer
+
+        else:
+            new_matrix[:,:,z_i] = layer
+
+    return new_matrix
+
+
+def plot_images(images,titles):
+
+    fig,axes=plt.subplots(1,len(images),figsize=(2*len(images),2))
+    
+    for i,image in enumerate(images):
+
+        axes[i].imshow(image)
+
+        axes[i].set_xticks([])
+        axes[i].set_yticks([])
+        axes[i].set_title(titles[i])
+
+    plt.subplots_adjust(wspace=0.05, hspace=0)
+
+    return fig,axes
+
+
+def extract_surfaces(matrix):
+
+    return [matrix[0,:,:],matrix[-1,:,:],matrix[:,0,:],matrix[:,-1,:],matrix[:,:,0],matrix[:,:,-1]]
+
+
+def find_grain_boundary(RVE,boundary_type='slim'):
+
+    shape = RVE.shape
+
+    boundary = np.zeros_like(RVE)
+
+    for i in range(shape[0]-1):
+        for j in range(shape[1]-1):
+
+            centre = RVE[i,j]
+
+            if boundary_type=='thick':
+                neighbours = np.array([RVE[i+1,j],RVE[i-1,j],RVE[i,j+1],RVE[i,j-1]]) # Thick boundary
+            
+            elif boundary_type=='slim':
+                neighbours = np.array([RVE[i+1,j],RVE[i,j+1]]) # Slim boundary
+
+            if np.mean(neighbours) == centre:
+                boundary[i,j] = 0
+
+            else:
+                boundary[i,j] = 1
+
+    boundary = np.where(boundary==0, np.nan, boundary)
+
+    return boundary
