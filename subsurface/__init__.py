@@ -14,4 +14,4 @@ from .tools import *
 # Class Files
 from ._voronoi import Voronoi
 from ._markovchain import MarkovChain
-
+from ._shuffle import Shuffle
