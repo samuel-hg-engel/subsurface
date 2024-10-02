@@ -1,6 +1,7 @@
 from subsurface.imports import *
 from subsurface.tools import *
 import random
+import multiprocessing 
 
 def Shuffle(material,orientations,iterations,exclude=None,return_full=False,minimize=False,family='cubic',lattice='cI'):
     """
@@ -85,6 +86,9 @@ def find_misorientation(orientations,nearest_grains,family,lattice):
     return distribution
 
 
+
+
+
 def find_local_misorientation(orientations,nearest_grains,seed_index,family,lattice):
     """
     For a given index, this function will calculate the local misorientation and return a list of angles.
@@ -104,25 +108,24 @@ def find_local_misorientation(orientations,nearest_grains,seed_index,family,latt
 
     Returns
     -------
-    distribution : list
-        Unstructured list of all misorientation angles measured in degrees.
+    omega : list
+        Unstructured list of misorientation angles measured in degrees.
     
     """
     
     # Find all the equivalent orientations.
-    reference_orientation =  np.array(damask.Orientation.from_quaternion(q=orientations[seed_index],family=family,lattice=lattice).equivalent) # 230 ms
+    reference_orientation =  damask.Orientation.from_quaternion(q=orientations[seed_index],lattice=lattice) # 230 ms
     
     # Find the neighbour orientations.
     nearest_orientations = [orientations[i] for i in nearest_grains]
-    neighbour_orientations = nearest_orientations[seed_index]
+    neighbour_orientations = damask.Orientation.from_quaternion(q=nearest_orientations[seed_index],lattice=lattice)
+
+    # Find the misorientation angle
+    #n,omega = reference_orientation.disorientation(neighbour_orientations).as_axis_angle(degrees=True,pair=True)
+
+    omega = reference_orientation.disorientation_angle(neighbour_orientations)*180/np.pi
     
-    # Take the dot product.
-    layer_matrix = np.array([np.outer(reference_orientation[:,j],neighbour_orientations[:,j]) for j in range(4)])
-
-    # Use the dot product to calculate the angle between the quaternions, but only keep the smallest angle of the equivalent quaternions.
-    distribution = np.min((2*np.arccos(np.abs(np.sum(layer_matrix,axis=0)))*180/np.pi),axis=0)
-
-    return distribution
+    return omega
 
 
 def find_new_arrangement(orientations,nearest_grains,exclude,minimize,family,lattice):
