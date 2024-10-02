@@ -55,6 +55,26 @@ def Shuffle(material,orientations,iterations,exclude=None,return_full=False,mini
 
 
 def find_misorientation(orientations,nearest_grains,family,lattice):
+    """
+    Wrapper for the find_local_misorientation code.
+
+    Parameters
+    ----------
+    orientations : list
+        List of quaternions that represent the grain orientations.
+    neighbour_grains : list
+        List of lists containing the nearest neighbour grains to each grain.
+    family : str
+        Slip family to consider - see damask.Orientation for full description.
+    lattice : str
+        Lattice to consider - see damask.Orientation for full description.
+
+    Returns
+    -------
+    distribution : list
+        Unstructured list of all misorientation angles.
+    
+    """
 
     distribution = []
 
@@ -66,16 +86,35 @@ def find_misorientation(orientations,nearest_grains,family,lattice):
 
 
 def find_local_misorientation(orientations,nearest_grains,seed_index,family,lattice):
+    """
+    For a given index, this function will calculate the local misorientation and return a list of angles.
 
-    i = seed_index
+    Parameters
+    ----------
+    orientations : list
+        List of quaternions that represent the grain orientations.
+    neighbour_grains : list
+        List of lists containing the nearest neighbour grains to each grain.
+    seed_index: int
+        Index to calculate the local misorientation around.
+    family : str
+        Slip family to consider - see damask.Orientation for full description.
+    lattice : str
+        Lattice to consider - see damask.Orientation for full description.
 
-    nearest_orientations = [orientations[i] for i in nearest_grains]
+    Returns
+    -------
+    distribution : list
+        Unstructured list of all misorientation angles measured in degrees.
+    
+    """
     
     # Find all the equivalent orientations.
-    reference_orientation =  np.array(damask.Orientation.from_quaternion(q=orientations[i],family=family,lattice=lattice).equivalent) # 230 ms
+    reference_orientation =  np.array(damask.Orientation.from_quaternion(q=orientations[seed_index],family=family,lattice=lattice).equivalent) # 230 ms
     
     # Find the neighbour orientations.
-    neighbour_orientations = nearest_orientations[i]
+    nearest_orientations = [orientations[i] for i in nearest_grains]
+    neighbour_orientations = nearest_orientations[seed_index]
     
     # Take the dot product.
     layer_matrix = np.array([np.outer(reference_orientation[:,j],neighbour_orientations[:,j]) for j in range(4)])
@@ -87,15 +126,38 @@ def find_local_misorientation(orientations,nearest_grains,seed_index,family,latt
 
 
 def find_new_arrangement(orientations,nearest_grains,exclude,minimize,family,lattice):
+    """
+    Function to shuffle the orientations and calculate the misorientation.
 
-    i,j = choose(len(orientations),exclude),choose(len(orientations),exclude)
+    Parameters
+    ----------
+    orientations : list
+        List of quaternions that represent the grain orientations.
+    neighbour_grains : list
+        List of lists containing the nearest neighbour grains to each grain.
+    exclude : list or None
+        List of material indices to exlude from the shuffling operation.
+    minimize : bool
+        Option to minimise the overall misorientation.
+    family : str
+        Slip family to consider - see damask.Orientation for full description.
+    lattice : str
+        Lattice to consider - see damask.Orientation for full description.
+
+    Returns
+    -------
+    new_orientations : list
+        List of shuffled orientations.
+    """
+
+    i,j = choose(0,len(orientations),exclude),choose(0,len(orientations),exclude)
 
     local_misorientation_home = find_local_misorientation(orientations,nearest_grains,seed_index=i,family=family,lattice=lattice) # What is the local misorientation on seed i?
     local_misorientation_away = find_local_misorientation(orientations,nearest_grains,seed_index=j,family=family,lattice=lattice) # What is the local misorientation on seed j?
 
     previous_misorientation = np.mean(local_misorientation_home)+np.mean(local_misorientation_away)
 
-    new_orientations = shuffle(orientations,locations=[i,j])
+    new_orientations = switch(orientations,locations=[i,j])
 
     local_misorientation_home = find_local_misorientation(new_orientations,nearest_grains,seed_index=i,family=family,lattice=lattice)
     local_misorientation_away = find_local_misorientation(new_orientations,nearest_grains,seed_index=j,family=family,lattice=lattice)
@@ -112,22 +174,36 @@ def find_new_arrangement(orientations,nearest_grains,exclude,minimize,family,lat
     else:
         return new_orientations
 
-def find_neighbour_grains(RVE):
+def find_neighbour_grains(material):
+    """
+    Function to find the neighbouring grains to grains in a material RVE.
 
-    shape = RVE.shape
+    Parameters
+    ----------
+    material : array (:,:,:)
+        Three dimensional representative volume element as an array of material points.
 
-    neighbour_grains = [set() for grain in np.unique(RVE)]
+    Returns
+    -------
+    neighbour_grains : list
+        List of lists containing the nearest neighbour grains to each grain.
+    """
+
+    shape = material.shape
+
+    neighbour_grains = [set() for grain in np.unique(material)]
 
     # We start from 1 and end on -1 to prevent catching the boundaries
     for i in range(1,shape[0]-1):
         for j in range(1,shape[1]-1):
             for k in range(1,shape[2]-1):
 
-                centre = RVE[i,j,k]
+                centre = material[i,j,k]
                 
-                neighbours = np.array([RVE[i+1,j,k],RVE[i-1,j,k],
-                                       RVE[i,j+1,k],RVE[i,j-1,k],
-                                       RVE[i,j,k+1],RVE[i,j,k-1],       
+                # We only consider the first nearest neighbours
+                neighbours = np.array([material[i+1,j,k],material[i-1,j,k],
+                                       material[i,j+1,k],material[i,j-1,k],
+                                       material[i,j,k+1],material[i,j,k-1],       
                                        ])
 
                 neighbours = np.unique(neighbours).tolist()
@@ -141,25 +217,51 @@ def find_neighbour_grains(RVE):
 
     return neighbour_grains
 
-def choose(max_value,exclusions):
+def choose(minimum,maximum,exclusions):
+    """
+    Function to sample from a flat distribution with exclusions.
 
-    return random.choice([i for i in range(0,max_value) if i not in exclusions])
+    Parameters
+    ----------
+    minimum : int
+        Minimum value of the distribution.
+    maximum : int
+        Maximum value of the distribution.
+    exclusions : list
+        List of values to exclude from the distribution.
 
-def shuffle(x,return_index=False,locations=False):
+    Returns
+    -------
+    choice : int
+        Chosen value from the distribution.
+    """
 
+    choice = random.choice([i for i in range(minimum,maximum) if i not in exclusions])
+
+    return choice
+
+def switch(x,locations):
+    """
+    Function to switch rows in a list.
+
+    Parameters
+    ----------
+    x : list
+        List of values.
+    locations : list of int of length (2)
+        Two indices to swap.
+
+    Returns
+    -------
+    x_new : list
+        List of values with a switch.
+    """
+    
+    i,j = locations
+    
     x_new = copy.copy(x)
 
-    # pick two rows to swap
-    if locations:
-        row1,row2=locations
+    x_new[[j,i]] = x_new[[i,j]] 
     
-    else:
-        row1,row2 = np.random.randint(low=0,high=len(x),size=2)
-
-    x_new[[row2,row1]] = x_new[[row1,row2]] 
-
-    if return_index:
-        return x_new,[row1,row2]
-    else:
-        return x_new
+    return x_new
 
