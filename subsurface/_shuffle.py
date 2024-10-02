@@ -33,6 +33,9 @@ def Shuffle(material,orientations,iterations,exclude=None,return_full=False,mini
         Unstructured list of misorientations.
     """
 
+    # Quick catch to account for no exclusions
+    exclude = [] if exclude is None else exclude
+
     # Firstly we need to identify what grains are near eachother.
     nearest_grains = find_neighbour_grains(material)
 
