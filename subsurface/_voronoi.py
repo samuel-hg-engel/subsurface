@@ -1,5 +1,6 @@
 from subsurface.imports import *
 from subsurface.tools import *
+from subsurface.construction import *
 
 class Voronoi:
     def __init__(self,voxels,seeds,size,weights=None):

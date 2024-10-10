@@ -7,7 +7,7 @@ plt.style.use('science')
 plt.rc('text', usetex=False)
 plt.rcParams['figure.dpi'] = 200
 
-def plot_results(outputs,name,bounds=None,colorbar=False,cbar_ticks=None,cmap='coolwarm'):
+def plot_results(outputs,name,bounds=None,colorbar=False,cbar_ticks=None,cmap='coolwarm',interpolation='nearest'):
     """
     Method to plot the results for a set of NxM images.
 
@@ -38,7 +38,7 @@ def plot_results(outputs,name,bounds=None,colorbar=False,cbar_ticks=None,cmap='c
         if length==1:
             ax=[ax]
 
-        img = ax[i].imshow(matrix,origin="lower",cmap=cmap,vmin=minx,vmax=maxx)
+        img = ax[i].imshow(matrix,origin="lower",cmap=cmap,vmin=minx,vmax=maxx,interpolation=interpolation)
         ax[i].set_xticks([])
         ax[i].set_yticks([])
         
