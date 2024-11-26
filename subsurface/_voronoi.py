@@ -70,7 +70,7 @@ class Voronoi:
     def size(self):
         return self._size
 
-    @voxels.setter
+    @size.setter
     def size(self,value):
         self._size = value
         self._coordinates =  generate_coordinates(self._voxels,self._size)
@@ -113,7 +113,7 @@ class Voronoi:
     @property
     def grain_centre(self):
         self._seed_IDs = np.unique(self._matrix)
-        self._grain_centre = get_grain_centre(self._matrix,self._seed_IDs,self._size,self._voxels)
+        self._grain_centre = get_grain_centre(self._matrix,self._seed_locations,self._seed_IDs,self._size,self._voxels)
         return self._grain_centre
 
     # Generic Methods

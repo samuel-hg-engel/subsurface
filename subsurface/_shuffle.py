@@ -3,7 +3,7 @@ from subsurface.tools import *
 import random
 import multiprocessing 
 
-def Shuffle(material,orientations,iterations,exclude=None,return_full=False,minimize=False,family='cubic',lattice='cI'):
+def Shuffle(material,orientation,iterations,exclude=None,return_full=False,minimize=False,family='cubic',lattice='cI',output_frequency=1):
     """
     Function to shuffle the orientations in a representative volume element.
 
@@ -29,9 +29,11 @@ def Shuffle(material,orientations,iterations,exclude=None,return_full=False,mini
     Returns
     -------
     shuffled_orientations : list
-        List of shuffled orientations.
+        List of shuffled orientations for every nth shuffle increment.
     misorientations : list (optional)
         Unstructured list of misorientations.
+    misorientation_change : list (optional)
+        List of average misorientation values for each increment.
     """
 
     # Quick catch to account for no exclusions
@@ -40,16 +42,24 @@ def Shuffle(material,orientations,iterations,exclude=None,return_full=False,mini
     # Firstly we need to identify what grains are near eachother.
     nearest_grains = find_neighbour_grains(material)
 
+    misorientation_change = []
+    orientations = []
+
     for idx in range(iterations):
 
         # Determine the new orientations.
-        orientations = find_new_arrangement(orientations,nearest_grains,exclude,minimize,family,lattice)
+        orientation, change = find_new_arrangement(orientation,nearest_grains,exclude,minimize,family,lattice,return_misorientation=True)
+
+        # Save every output_frequency increment
+        if (idx % output_frequency)==0:
+            misorientation_change.append(change)
+            orientations.append(orientation)
 
     if return_full:
         
-        misorientation = find_misorientation(orientations,nearest_grains,family,lattice)
+        misorientation = find_misorientation(orientations[-1],nearest_grains,family,lattice)
 
-        return orientations,misorientation
+        return orientations,misorientation,misorientation_change
 
     else: 
         return orientations
@@ -84,8 +94,6 @@ def find_misorientation(orientations,nearest_grains,family,lattice):
         distribution.extend(find_local_misorientation(orientations,nearest_grains,idx,family,lattice))
 
     return distribution
-
-
 
 
 
@@ -128,7 +136,7 @@ def find_local_misorientation(orientations,nearest_grains,seed_index,family,latt
     return omega
 
 
-def find_new_arrangement(orientations,nearest_grains,exclude,minimize,family,lattice):
+def find_new_arrangement(orientations,nearest_grains,exclude,minimize,family,lattice,return_misorientation=False):
     """
     Function to shuffle the orientations and calculate the misorientation.
 
@@ -167,12 +175,23 @@ def find_new_arrangement(orientations,nearest_grains,exclude,minimize,family,lat
 
     current_misorientation = np.mean(local_misorientation_home)+np.mean(local_misorientation_away)
 
-    if minimize:
-        if current_misorientation < previous_misorientation:
-            return new_orientations
+    misorientation_change = current_misorientation - previous_misorientation
 
-        else:
-            return orientations
+    if minimize:
+
+        if return_misorientation==False:
+            if current_misorientation < previous_misorientation:
+                return new_orientations
+
+            else:
+                return orientations
+        
+        elif return_misorientation==True:
+            if current_misorientation < previous_misorientation:
+                return new_orientations, misorientation_change
+
+            else:
+                return orientations, 0
         
     else:
         return new_orientations
@@ -204,9 +223,41 @@ def find_neighbour_grains(material):
                 centre = material[i,j,k]
                 
                 # We only consider the first nearest neighbours
-                neighbours = np.array([material[i+1,j,k],material[i-1,j,k],
-                                       material[i,j+1,k],material[i,j-1,k],
-                                       material[i,j,k+1],material[i,j,k-1],       
+                # first order neighbours
+                neighbours = np.array([
+                                       #material[i+1,j,k],material[i-1,j,k],
+                                       #material[i,j+1,k],material[i,j-1,k],
+                                       #material[i,j,k+1],material[i,j,k-1],
+
+                                        material[i-1,j,  k  ], # Close face
+                                        material[i-1,j-1,k  ],
+                                        material[i-1,j+1,k  ],
+                                        material[i-1,j,  k+1],
+                                        material[i-1,j-1,k+1],
+                                        material[i-1,j+1,k+1],
+                                        material[i-1,j,  k-1],
+                                        material[i-1,j-1,k-1],
+                                        material[i-1,j+1,k-1],
+
+                                        #material[i  ,j,  k  ], # Centre face
+                                        material[i  ,j-1,k  ],
+                                        material[i  ,j+1,k  ],
+                                        material[i  ,j,  k+1],
+                                        material[i  ,j-1,k+1],
+                                        material[i  ,j+1,k+1],
+                                        material[i  ,j,  k-1],
+                                        material[i  ,j-1,k-1],
+                                        material[i  ,j+1,k-1],
+
+                                        material[i+1,j,  k  ], # Far face
+                                        material[i+1,j-1,k  ],
+                                        material[i+1,j+1,k  ],
+                                        material[i+1,j,  k+1],
+                                        material[i+1,j-1,k+1],
+                                        material[i+1,j+1,k+1],
+                                        material[i+1,j,  k-1],
+                                        material[i+1,j-1,k-1],
+                                        material[i+1,j+1,k-1],
                                        ])
 
                 neighbours = np.unique(neighbours).tolist()
