@@ -1,18 +1,22 @@
+import subsurface
 from subsurface.imports import *
 from subsurface.tools import *
 
-def MarkovChain(N_iter,
-                accuracy_threshold,
-                perturbation,
-                voronoi_reference,
-                output_frequency=1,
-                weighted=False,
-                periodic=False,
-                target_rate=None,
-                window_size=1000,
-                dampening_factor=0.001,
-                return_scale=False,
-                return_rate=False):
+
+def MarkovChain(voronoi_reference: subsurface.Voronoi,
+                N_iter: int,
+                accuracy_threshold: float,
+                perturbation: float,
+                output_frequency: int = 1,
+                target_rate: float | None = None,
+                window_size: int = 1000,
+                dampening_factor: float = 0.001,
+                return_scale: bool = False,
+                return_rate: bool = False,
+                bounded: bool = False,
+                layer: int = 0,
+                weights: np.ndarray | None = None,
+                ):
     """
     Function to generate a list of perturbed Voronoi objects.
 
@@ -28,11 +32,9 @@ def MarkovChain(N_iter,
         A specific Voronoi class object to be perturbed.
     output_frequency : int
         Frequency to save the perturbed Voronoi objects.
-    weighted : Bool
-        Whether or not the Voronoi object should use the weighted calculation. 
-    periodic: Bool
-        Whether or not the Voronoi object should adhere to periodic boundary conditions.
-
+    bounded: bool
+        Whether to restrict the seeds to stay within the size of the box.
+        Defaults to false.
     Returns
     -------
     successful_voronoi : list
@@ -56,20 +58,21 @@ def MarkovChain(N_iter,
         
         # Create a perturbed copy
         voronoi_perturbed = copy.copy(voronoi_chain)
-        voronoi_perturbed.perturb_seed_locations(perturbation,periodic=periodic)
-        voronoi_perturbed.generate_matrix(weighted=weighted,periodic=periodic)
+        voronoi_perturbed.perturb_seed_locations(perturbation,bounded,weights)
+        voronoi_perturbed.generate_matrix()
     
         # Determine the surface accuracy
-        accuracy = calculate_accuracy(voronoi_reference.matrix,voronoi_perturbed.matrix,layer=0)
+        accuracy = calculate_accuracy(voronoi_reference.matrix,voronoi_perturbed.matrix,layer=layer)
     
         # If we reconstruct the surface within some error, save the seeds and make them the new chain seed
-        if accuracy > accuracy_threshold:
-                        
-            successful_voronoi.append(voronoi_perturbed)
-    
-            voronoi_chain = voronoi_perturbed
+        # We can also check for harsh accuracy. 
+        if (accuracy >= accuracy_threshold):
+                      
+                successful_voronoi.append(voronoi_perturbed)
+        
+                voronoi_chain = voronoi_perturbed
 
-            success_list.append(1)
+                success_list.append(1)
         else:
             success_list.append(0)
 

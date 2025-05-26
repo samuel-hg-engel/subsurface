@@ -7,8 +7,8 @@ from subsurface import Shuffle
 # Generate voronoi
 print('Generating Voronoi')
 N_seeds = 500
-N_voxels = [64]*3
-size = np.ones(3)*1e-3
+N_voxels = [128]*3
+size = np.ones(3)
 voronoi = Voronoi(N_voxels,N_seeds,size)
 voronoi.generate_matrix()
 
