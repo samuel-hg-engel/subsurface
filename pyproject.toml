@@ -22,7 +22,7 @@ dependencies = [
     "scipy",
     "numpy",                     
     "matplotlib",
-    "damask>=3.0.0",
+    "damask>=3.0.2",
     "h5py",
     "pandas",
     "SciencePlots",
