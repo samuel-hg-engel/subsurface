@@ -4,16 +4,28 @@ build-backend = "hatchling.build"
 
 [project]
 name = "subsurface"
-version = "0.0.1"
+version = "0.1.0"
 authors = [
   { name="Samuel Engel", email="samuel.engel@manchester.ac.uk" },
 ]
 description = "Tools to generate microstructures for CPFEM using Markov Chains"
 readme = "README.md"
-requires-python = ">=3.8"
+requires-python = ">=3.10"
+
 classifiers = [
-    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.11",
+    "Intended Audience :: Science/Research",
     "Operating System :: OS Independent",
+]
+
+dependencies = [
+    "scipy",
+    "numpy",                     
+    "matplotlib",
+    "damask>=3.0.0",
+    "h5py",
+    "pandas",
+    "SciencePlots",
 ]
 
 [project.urls]
