@@ -1,6 +1,6 @@
 import pandas as pd
 
-def to_csv(seed_locations,orientatione,fname):
+def to_csv(seed_locations,orientations,fname):
 
     dataframe=pd.DataFrame(seed_locations,columns=['x','y','z'])
 

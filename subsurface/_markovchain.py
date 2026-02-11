@@ -1,18 +1,25 @@
+import subsurface
 from subsurface.imports import *
 from subsurface.tools import *
 
-def MarkovChain(N_iter,
-                accuracy_threshold,
-                perturbation,
-                voronoi_reference,
-                output_frequency=1,
-                weighted=False,
-                periodic=False,
-                target_rate=None,
-                window_size=1000,
-                dampening_factor=0.001,
-                return_scale=False,
-                return_rate=False):
+
+def MarkovChain(voronoi_reference: subsurface.Voronoi,
+                N_iter: int,
+                accuracy_threshold: float,
+                perturbation: float,
+                output_frequency: int = 1,
+                target_rate: float | None = None,
+                window_size: int = 1000,
+                dampening_factor: float = 0.001,
+                return_scale: bool = False,
+                return_rate: bool = False,
+                bounded: bool = False,
+                layer: int = 0,
+                weights: np.ndarray | None = None,
+                alpha_scale: float = 1.0,
+                chanced: bool = False,
+                max_step: float = 1.0
+                ):
     """
     Function to generate a list of perturbed Voronoi objects.
 
@@ -28,11 +35,9 @@ def MarkovChain(N_iter,
         A specific Voronoi class object to be perturbed.
     output_frequency : int
         Frequency to save the perturbed Voronoi objects.
-    weighted : Bool
-        Whether or not the Voronoi object should use the weighted calculation. 
-    periodic: Bool
-        Whether or not the Voronoi object should adhere to periodic boundary conditions.
-
+    bounded: bool
+        Whether to restrict the seeds to stay within the size of the box.
+        Defaults to false.
     Returns
     -------
     successful_voronoi : list
@@ -48,6 +53,9 @@ def MarkovChain(N_iter,
     success_list = []
     perturbation_list = []
     rate_list = []
+    increment_value = []
+
+    total_displacement = 1e-10
 
     # Perform N_iter loops
     for N in range(N_iter):
@@ -56,20 +64,35 @@ def MarkovChain(N_iter,
         
         # Create a perturbed copy
         voronoi_perturbed = copy.copy(voronoi_chain)
-        voronoi_perturbed.perturb_seed_locations(perturbation,periodic=periodic)
-        voronoi_perturbed.generate_matrix(weighted=weighted,periodic=periodic)
+        voronoi_perturbed.perturb_seed_locations(perturbation,bounded,weights)
+        voronoi_perturbed.generate_matrix()
     
         # Determine the surface accuracy
-        accuracy = calculate_accuracy(voronoi_reference.matrix,voronoi_perturbed.matrix,layer=0)
+        accuracy = calculate_accuracy(voronoi_reference.matrix,voronoi_perturbed.matrix,layer=layer)
     
+        current_displacement = np.mean(np.linalg.norm(voronoi_reference.seeds-voronoi_perturbed.seeds,axis=1))
+
+        alpha = alpha_scale*(current_displacement / total_displacement)
+
+        if chanced:
+            chance = np.random.random(size=1)
+        else:
+            chance = 1.0
+        
         # If we reconstruct the surface within some error, save the seeds and make them the new chain seed
-        if accuracy > accuracy_threshold:
-                        
+        # We can also check for harsh accuracy. 
+        # Firstly check we are maximising the average displacement
+        if (alpha > chance) and (accuracy >= accuracy_threshold):
+            # update the current best displacement
+            total_displacement = current_displacement
+                    
             successful_voronoi.append(voronoi_perturbed)
-    
+
             voronoi_chain = voronoi_perturbed
 
             success_list.append(1)
+            increment_value.append(N)
+            
         else:
             success_list.append(0)
 
@@ -101,27 +124,27 @@ def MarkovChain(N_iter,
                     scale_factor = 1 - difference
 
                     # Adjust the perturbation
-                    perturbation = perturbation*scale_factor
+                    perturbation = min(max_step,perturbation*scale_factor)
 
     if return_scale==True:
 
         if return_rate==True:
 
-            return successful_voronoi[::output_frequency], perturbation_list[::output_frequency], rate_list[::output_frequency]
+            return successful_voronoi[::output_frequency], perturbation_list[::output_frequency], rate_list[::output_frequency],increment_value
     
         elif return_rate==False:
 
-            return successful_voronoi[::output_frequency], perturbation_list[::output_frequency]
+            return successful_voronoi[::output_frequency], perturbation_list[::output_frequency],increment_value
         
     elif return_scale==False:
 
         if return_rate==True:
 
-            return successful_voronoi[::output_frequency], rate_list[::output_frequency]
+            return successful_voronoi[::output_frequency], rate_list[::output_frequency],increment_value
         
         elif return_rate==False:
             
-            return successful_voronoi[::output_frequency]
+            return successful_voronoi[::output_frequency],increment_value
     
     else:
-        return successful_voronoi[::output_frequency]
+        return successful_voronoi[::output_frequency], increment_value
