@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "subsurface"
-version = "0.1.0"
+version = "0.1.1"
 authors = [
   { name="Samuel Engel", email="samuel.engel@manchester.ac.uk" },
 ]
@@ -13,7 +13,7 @@ readme = "README.md"
 requires-python = ">=3.10"
 
 classifiers = [
-    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.10",
     "Intended Audience :: Science/Research",
     "Operating System :: OS Independent",
 ]
