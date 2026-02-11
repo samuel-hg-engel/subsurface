@@ -16,6 +16,9 @@ def MarkovChain(voronoi_reference: subsurface.Voronoi,
                 bounded: bool = False,
                 layer: int = 0,
                 weights: np.ndarray | None = None,
+                alpha_scale: float = 1.0,
+                chanced: bool = False,
+                max_step: float = 1.0
                 ):
     """
     Function to generate a list of perturbed Voronoi objects.
@@ -50,6 +53,9 @@ def MarkovChain(voronoi_reference: subsurface.Voronoi,
     success_list = []
     perturbation_list = []
     rate_list = []
+    increment_value = []
+
+    total_displacement = 1e-10
 
     # Perform N_iter loops
     for N in range(N_iter):
@@ -64,15 +70,29 @@ def MarkovChain(voronoi_reference: subsurface.Voronoi,
         # Determine the surface accuracy
         accuracy = calculate_accuracy(voronoi_reference.matrix,voronoi_perturbed.matrix,layer=layer)
     
+        current_displacement = np.mean(np.linalg.norm(voronoi_reference.seeds-voronoi_perturbed.seeds,axis=1))
+
+        alpha = alpha_scale*(current_displacement / total_displacement)
+
+        if chanced:
+            chance = np.random.random(size=1)
+        else:
+            chance = 1.0
+        
         # If we reconstruct the surface within some error, save the seeds and make them the new chain seed
         # We can also check for harsh accuracy. 
-        if (accuracy >= accuracy_threshold):
-                      
-                successful_voronoi.append(voronoi_perturbed)
-        
-                voronoi_chain = voronoi_perturbed
+        # Firstly check we are maximising the average displacement
+        if (alpha > chance) and (accuracy >= accuracy_threshold):
+            # update the current best displacement
+            total_displacement = current_displacement
+                    
+            successful_voronoi.append(voronoi_perturbed)
 
-                success_list.append(1)
+            voronoi_chain = voronoi_perturbed
+
+            success_list.append(1)
+            increment_value.append(N)
+            
         else:
             success_list.append(0)
 
@@ -104,27 +124,27 @@ def MarkovChain(voronoi_reference: subsurface.Voronoi,
                     scale_factor = 1 - difference
 
                     # Adjust the perturbation
-                    perturbation = perturbation*scale_factor
+                    perturbation = min(max_step,perturbation*scale_factor)
 
     if return_scale==True:
 
         if return_rate==True:
 
-            return successful_voronoi[::output_frequency], perturbation_list[::output_frequency], rate_list[::output_frequency]
+            return successful_voronoi[::output_frequency], perturbation_list[::output_frequency], rate_list[::output_frequency],increment_value
     
         elif return_rate==False:
 
-            return successful_voronoi[::output_frequency], perturbation_list[::output_frequency]
+            return successful_voronoi[::output_frequency], perturbation_list[::output_frequency],increment_value
         
     elif return_scale==False:
 
         if return_rate==True:
 
-            return successful_voronoi[::output_frequency], rate_list[::output_frequency]
+            return successful_voronoi[::output_frequency], rate_list[::output_frequency],increment_value
         
         elif return_rate==False:
             
-            return successful_voronoi[::output_frequency]
+            return successful_voronoi[::output_frequency],increment_value
     
     else:
-        return successful_voronoi[::output_frequency]
+        return successful_voronoi[::output_frequency], increment_value

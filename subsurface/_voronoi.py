@@ -7,6 +7,7 @@ class Voronoi:
                  voxels: list[int],
                  size: list[float],
                  seeds: list[list[float]],
+                 clusters: list[list[float]] | None = None,
                  periodic: bool = False,
                  origin: list[float] = [0.0]*3,
                  minkowski: float = 2.0,
@@ -18,24 +19,29 @@ class Voronoi:
         ----------
         voxels : sequence of ints with length of (3)
             Number of voxels along the x, y, z direction.
-        seeds : list[list[float]] seed locations relative to origin in [m].
+        seeds : list[list[float]] 
+            Seed locations relative to origin in [m].
+        clusters : list[list[float]] 
+            Cluster locations relative to the origin in [m].
         size : sequence of floats with length of (3)
             Size in [m] of the edge lengths of the RVE.
         """ 
-
         self.voxels = voxels
         self.size  = size
         self.seeds = seeds
         self.origin = origin
         self.periodic = periodic
         self.minkowski = minkowski
+        self.clusters = clusters
 
     def __str__(self):
 
         statement = (f'Voronoi Object\n'
                      f'Seeds : {len(self.seeds)}\n'
+                     f'Clusters : {len(self.clusters)} [m]\n'
                      f'Size : {self.size} [m]\n'
-                     f'Voxels : {self.voxels}\n')
+                     f'Voxels : {self.voxels}\n'
+                     )
         
         return statement
 
@@ -79,6 +85,17 @@ class Voronoi:
               seeds: list[list[float]],
               ):
         self._seeds = np.asarray(seeds)
+
+    @property
+    def clusters(self) -> np.ndarray:
+        """Cluster locations in [m]."""
+        return self._clusters
+    
+    @clusters.setter
+    def clusters(self,
+              clusters: list[list[float]],
+              ):
+        self._clusters = np.asarray(clusters)
 
     @property
     def origin(self) -> np.ndarray:
@@ -168,14 +185,26 @@ class Voronoi:
         seed_tree = scipy.spatial.KDTree(self._seeds,boxsize=self._size if self._periodic else None)
 
         matrix = seed_tree.query(self._coordinates.reshape(-1,self._coordinates.shape[-1]), workers=workers,p=self._minkowski)[1]
-        
+         
         self.matrix = matrix.reshape(self._coordinates.shape[:-1])
+
+        return self
+
+    def generate_clusters(self,workers=4):
+        """Cluster the Voronoi cells in the tesselation."""
+
+        cluster_tree = scipy.spatial.KDTree(self._clusters,boxsize=self._size if self._periodic else None)
+
+        seed_cluster = cluster_tree.query(self._seeds,workers=workers)[1]
+
+        cluster_dict = dict(zip(range(len(self._seeds)),seed_cluster))
+
+        self.matrix = np.vectorize(lambda x: cluster_dict[x])(self.matrix)
 
         return self
 
     def save(self,filename):
         """Save the tesselation as a VTI."""
-
 
         # Generate a dummy grid using damask
         grid = damask.GeomGrid.from_Voronoi_tessellation(size=[1,1,1],seeds=[[1,1,1]],cells=[1,1,1],periodic=False)
@@ -183,6 +212,8 @@ class Voronoi:
         grid.size = self._size
         grid.material = self._matrix
         grid.save(fname=filename)
+
+        return self
 
 
     def perturb_seed_locations(self,
