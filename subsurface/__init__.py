@@ -11,7 +11,6 @@ Similiar methods are used to shuffle crystallographic orientations to bespoke te
 from .imports import *
 from .tools import *
 from .plotting import *
-from .metrics import *
 
 # Class Files
 from ._voronoi import Voronoi
