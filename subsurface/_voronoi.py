@@ -38,8 +38,8 @@ class Voronoi:
 
         statement = (f'Voronoi Object\n'
                      f'Seeds : {len(self.seeds)}\n'
-                     f'Clusters : {len(self.clusters)} [m]\n'
-                     f'Size : {self.size} [m]\n'
+                     f'Clusters : {len(self.clusters)}\n'
+                     f'Size : {self.size}\n'
                      f'Voxels : {self.voxels}\n'
                      )
         
@@ -190,7 +190,7 @@ class Voronoi:
 
         return self
 
-    def generate_clusters(self,workers=4):
+    def generate_clusters(self,workers=4, return_dict=False):
         """Cluster the Voronoi cells in the tesselation."""
 
         cluster_tree = scipy.spatial.KDTree(self._clusters,boxsize=self._size if self._periodic else None)
@@ -201,7 +201,10 @@ class Voronoi:
 
         self.matrix = np.vectorize(lambda x: cluster_dict[x])(self.matrix)
 
-        return self
+        if return_dict:
+            return self, cluster_dict
+        else:
+            return self
 
     def save(self,filename):
         """Save the tesselation as a VTI."""
@@ -214,7 +217,6 @@ class Voronoi:
         grid.save(fname=filename)
 
         return self
-
 
     def perturb_seed_locations(self,
                                scale: float,
